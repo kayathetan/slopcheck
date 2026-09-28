@@ -1,2 +1,5 @@
 node_modules/
 results.jsonl
+data/shots/
+data/results.jsonl
+data/batch.log

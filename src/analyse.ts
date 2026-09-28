@@ -1,7 +1,11 @@
 import { chromium, type Browser } from 'playwright';
+import { mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { collectFacts } from './extract.js';
 import { scoreFacts } from './signals.js';
-import type { Report } from './types.js';
+import type { Report, PageFacts } from './types.js';
+
+const slug = (url: string) => createHash('sha1').update(url).digest('hex').slice(0, 12);
 
 /**
  * Local dev drives the Chrome that is already installed, because Playwright
@@ -12,7 +16,11 @@ async function launch(): Promise<Browser> {
   return chromium.launch({ channel: 'chrome', args: ['--disable-dev-shm-usage'] });
 }
 
-export async function analyse(url: string, browser?: Browser): Promise<Report> {
+export async function analyse(
+  url: string,
+  browser?: Browser,
+  opts: { shot?: boolean } = {}
+): Promise<Report> {
   const own = !browser;
   const b = browser ?? (await launch());
   try {
@@ -22,22 +30,36 @@ export async function analyse(url: string, browser?: Browser): Promise<Report> {
       userAgent:
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     });
-    // esbuild (via tsx) rewrites named functions to reference a __name helper
-    // that only exists in the bundle, not in the page. collectFacts is
-    // serialised and evaluated inside the browser, where that reference blows
-    // up. Injected as a raw string so the transform cannot touch it.
-    await page.addInitScript({
-      content: 'globalThis.__name = globalThis.__name || function (f) { return f; };',
-    });
-
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 45_000 });
+    // networkidle never settles on sites with polling or persistent sockets -
+    // lovable.dev simply times out. Get the DOM first, then give the network a
+    // short chance to quieten, and carry on either way.
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
     // Webfonts decide the type facts, so wait for them rather than racing.
     await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
     await page.waitForTimeout(600);
 
-    const facts = await page.evaluate(collectFacts);
+    // esbuild (via tsx) rewrites named functions to reference a __name helper
+    // that exists in the bundle, not in the page. Shadowing it inside the
+    // evaluated expression fixes that without writing to the page's globals -
+    // which the earlier version did, and which broke on any site shipping its
+    // own esbuild bundle, since __name was already defined and not ours.
+    const facts = await page.evaluate<Omit<PageFacts, 'url'>>(
+      `(() => { const __name = (f) => f; return (${collectFacts.toString()})(); })()`
+    );
+
+    // A screenshot is what the human labeller actually judges. The score is
+    // derived from CSS; the label has to come from looking, or the two are
+    // not independent and the correlation means nothing.
+    let screenshot: string | undefined;
+    if (opts.shot) {
+      mkdirSync('data/shots', { recursive: true });
+      screenshot = `data/shots/${slug(url)}.jpg`;
+      await page.screenshot({ path: screenshot, type: 'jpeg', quality: 72 });
+    }
+
     await page.close();
-    return scoreFacts({ ...facts, url });
+    return { ...scoreFacts({ ...facts, url }), screenshot };
   } finally {
     if (own) await b.close();
   }

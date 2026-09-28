@@ -1,0 +1,59 @@
+# One URL per line. Deliberately NOT sorted into "generated" and "human" -
+# that is the label you are going to produce, and pre-sorting it would mean
+# the experiment tests whether the detector agrees with my guess rather than
+# with your eye.
+#
+# Add your own. The corpus wants breadth: template starters, agency work,
+# personal sites, docs, landing pages, things you love and things you hate.
+
+ui.shadcn.com
+tailwindcss.com
+v0.app
+lovable.dev
+bolt.new
+vercel.com
+linear.app
+stripe.com
+apple.com
+figma.com
+notion.so
+anthropic.com
+openai.com
+arc.net
+raycast.com
+framer.com
+webflow.com
+cursor.com
+resend.com
+clerk.com
+supabase.com
+railway.com
+planetscale.com
+neon.tech
+posthog.com
+sentry.io
+retool.com
+airtable.com
+pitch.com
+loom.com
+superhuman.com
+things.app
+bear.app
+craft.do
+readwise.io
+obsidian.md
+pentagram.com
+collins.design
+instrument.com
+hoverstat.es
+sonnet.io
+maggieappleton.com
+rauno.me
+paco.me
+lynnandtonic.com
+joshwcomeau.com
+brutalist.report
+motherfuckingwebsite.com
+bettermotherfuckingwebsite.com
+tryloopy.io
+kestiny.com

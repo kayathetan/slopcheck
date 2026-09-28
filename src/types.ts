@@ -43,4 +43,6 @@ export interface Report {
   verdict: Verdict;
   signals: Signal[];
   facts: PageFacts;
+  /** path to the above-the-fold capture the human labeller judges */
+  screenshot?: string;
 }
